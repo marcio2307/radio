@@ -1,0 +1,262 @@
+-<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Painel Rádio - Admin</title>
+<style>
+  :root {
+    --verde:#1db954;
+    --verde-claro:#1ed760;
+    --texto:#000;
+    --fundo:#fff;
+  }
+
+  body {
+    margin:0;
+    background:var(--fundo);
+    color:var(--texto);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding:20px;
+  }
+
+  .card {
+    width:100%;
+    max-width:520px;
+    background:#fff;
+    border:2px solid var(--verde);
+    border-radius:16px;
+    box-shadow:0 0 25px rgba(29,185,84,0.25);
+    padding:24px;
+  }
+
+  h2 {
+    text-align:center;
+    color:var(--verde);
+    margin-bottom:20px;
+  }
+
+  label {
+    display:block;
+    margin:12px 0 6px;
+    font-weight:600;
+  }
+
+  input[type="text"], input[type="password"] {
+    width:100%;
+    border:1px solid #ccc;
+    border-radius:8px;
+    padding:10px;
+    font-size:16px;
+  }
+
+  input[type="file"] {
+    width:100%;
+    border:none;
+  }
+
+  button {
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    transition:.2s;
+    margin-top:10px;
+  }
+
+  button.primary { background:var(--verde); color:#fff; }
+  button.primary:hover { background:var(--verde-claro); }
+  button.secondary { background:#ddd; color:#000; }
+  button.stream { background:#ffb300; color:#000; }
+
+  .muted { text-align:center; font-size:14px; color:#555; margin-top:8px; }
+  .ok { color:var(--verde); }
+  .warn { color:#c00; }
+
+  .preview {
+    width:100%;
+    height:200px;
+    border-radius:10px;
+    object-fit:cover;
+    display:none;
+    border:1px solid #ccc;
+    margin-top:8px;
+  }
+
+  progress {
+    width:100%;
+    height:10px;
+    border-radius:6px;
+    display:none;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="card" id="loginCard">
+  <h2>Login do Painel</h2>
+  <label>Usuário</label>
+  <input id="username" type="text" placeholder="admin"/>
+  <label>Senha</label>
+  <input id="password" type="password" placeholder="1234"/>
+  <button id="loginBtn" class="primary">Entrar</button>
+  <div id="loginStatus" class="muted"></div>
+</div>
+
+<!-- ADMIN -->
+<div class="card" id="adminCard" style="display:none;">
+  <h2>Controle da Rádio</h2>
+
+  <label>Imagem de Fundo</label>
+  <input id="bgFile" type="file" accept="image/*"/>
+  <img id="bgPreview" class="preview" alt="Prévia do fundo"/>
+  <progress id="bgProg" max="100" value="0"></progress>
+
+  <label>Link do Vídeo do YouTube (somente áudio)</label>
+  <input id="ytLink" type="text" placeholder="https://www.youtube.com/watch?v=..."/>
+
+  <!-- Botão para trocar para streaming -->
+  <button id="streamBtn" class="stream">🎵 Usar Streaming da Rádio</button>
+
+  <button id="saveBtn" class="primary">Salvar Configurações</button>
+  <button id="logoutBtn" class="secondary">Sair</button>
+
+  <div id="saveStatus" class="muted"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+  import { getDatabase, ref as dbRef, get, set } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
+  import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
+
+  // 🔥 Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAt4CeGjdbjzdtMH1qZHw6RuBFJ6SeTDKk",
+    authDomain: "coletivo-f34d4.firebaseapp.com",
+    databaseURL: "https://coletivo-f34d4-default-rtdb.firebaseio.com",
+    projectId: "coletivo-f34d4",
+    storageBucket: "coletivo-f34d4.firebasestorage.app",
+    messagingSenderId: "296376447787",
+    appId: "1:296376447787:web:1341c59c8087d6ac1e4b6e"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const storage = getStorage(app);
+  const infoRef = dbRef(db, "coletivo_info");
+
+  // DOM
+  const loginCard = document.getElementById("loginCard");
+  const adminCard = document.getElementById("adminCard");
+  const username = document.getElementById("username");
+  const password = document.getElementById("password");
+  const loginBtn = document.getElementById("loginBtn");
+  const loginStatus = document.getElementById("loginStatus");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const bgFile = document.getElementById("bgFile");
+  const bgPreview = document.getElementById("bgPreview");
+  const bgProg = document.getElementById("bgProg");
+  const ytLink = document.getElementById("ytLink");
+  const saveBtn = document.getElementById("saveBtn");
+  const saveStatus = document.getElementById("saveStatus");
+  const streamBtn = document.getElementById("streamBtn");
+
+  // Login simples
+  loginBtn.addEventListener("click", async () => {
+    if (username.value === "admin" && password.value === "1234") {
+      loginCard.style.display = "none";
+      adminCard.style.display = "block";
+      const snap = await get(infoRef);
+      const info = snap.val() || {};
+      if (info.bg) {
+        bgPreview.src = info.bg;
+        bgPreview.style.display = "block";
+      }
+      if (info.yt) ytLink.value = info.yt;
+    } else {
+      loginStatus.textContent = "Usuário ou senha incorretos.";
+    }
+  });
+
+  logoutBtn.addEventListener("click", () => {
+    adminCard.style.display = "none";
+    loginCard.style.display = "block";
+    username.value = ""; password.value = "";
+  });
+
+  // Preview imagem
+  bgFile.addEventListener("change", e => {
+    const f = e.target.files?.[0];
+    if (f) {
+      const r = new FileReader();
+      r.onload = ev => {
+        bgPreview.src = ev.target.result;
+        bgPreview.style.display = "block";
+      };
+      r.readAsDataURL(f);
+    }
+  });
+
+  // Upload genérico
+  const uploadWithProgress = (file, path, progEl) => new Promise((resolve, reject) => {
+    const ref = sRef(storage, path);
+    const task = uploadBytesResumable(ref, file);
+    progEl.style.display = "block";
+    task.on("state_changed", (snap) => {
+      progEl.value = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+    }, reject, async () => {
+      const url = await getDownloadURL(task.snapshot.ref);
+      progEl.style.display = "none";
+      resolve(url);
+    });
+  });
+
+  // 💾 Salvar configurações
+  saveBtn.addEventListener("click", async () => {
+    await salvarConfiguracoes(ytLink.value.trim());
+  });
+
+  // 🔊 Botão de streaming
+  streamBtn.addEventListener("click", async () => {
+    const streamURL = "https://stream.zeno.fm/l8ocj9i6ka2uv.m3u";
+    ytLink.value = streamURL;
+    await salvarConfiguracoes(streamURL);
+    saveStatus.innerHTML = '<span class="ok">🎧 Streaming ativado com sucesso!</span>';
+  });
+
+  // Função unificada de salvamento
+  async function salvarConfiguracoes(linkFinal) {
+    saveStatus.textContent = "Salvando...";
+    saveBtn.disabled = true;
+    try {
+      const snap = await get(infoRef);
+      const current = snap.val() || {};
+      let finalBg = current.bg || "";
+
+      // Upload imagem
+      if (bgFile.files?.[0]) {
+        const ext = (bgFile.files[0].name.split(".").pop() || "jpg").toLowerCase();
+        finalBg = await uploadWithProgress(bgFile.files[0], `radio/bg_${Date.now()}.${ext}`, bgProg);
+      }
+
+      const payload = { bg: finalBg, yt: linkFinal || "", playing: current.playing ?? true, position: current.position ?? 0 };
+      await set(infoRef, payload);
+      saveStatus.innerHTML = '<span class="ok">✅ Configurações salvas!</span>';
+    } catch (e) {
+      console.error(e);
+      saveStatus.innerHTML = '<span class="warn">❌ Erro ao salvar.</span>';
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
