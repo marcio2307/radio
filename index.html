@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Rádio Online</title>
 <style>
-  :root { --spotify-green:#043a18; --text:#ffffff; }
+  :root { --spotify-green:#043a18; --text:#ffffff; --accent:#0cdfb9; }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
     width:100%;height:100vh;overflow:hidden;
@@ -35,7 +35,6 @@
     transition:transform .2s ease,box-shadow .2s ease;
   }
   .play-button:hover{transform:scale(1.05);box-shadow:0 6px 28px rgba(4,58,24,0.6);}
-  .play-button:active{transform:scale(0.96);}
   .equalizer{display:flex;align-items:flex-end;justify-content:center;height:25px;gap:4px;}
   .bar{width:4px;height:6px;background-color:var(--spotify-green);border-radius:2px;opacity:.8;transform-origin:bottom;}
   .playing .bar{animation:bounce 1s ease-in-out infinite;}
@@ -43,7 +42,102 @@
   .playing .bar:nth-child(3){animation-delay:.2s}
   .playing .bar:nth-child(4){animation-delay:.3s}
   @keyframes bounce{0%,100%{transform:scaleY(0.3)}50%{transform:scaleY(1.3)}}
-  @media(max-width:480px){.play-button{width:70px;height:70px;font-size:30px}}
+
+  /* 💬 Mini Chat */
+  #chat-container {
+    position: fixed;
+    bottom: 230px; /* 🔹 mais acima, longe do player */
+    left: 40px;
+    width: 320px;
+    max-height: 420px;
+    display: flex; /* 🔹 já aberto */
+    flex-direction: column;
+    border-radius: 15px;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    background: rgba(4,58,24,0.96);
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 0 20px rgba(4,58,24,0.7);
+    z-index: 999;
+    animation: fadeIn .4s ease;
+  }
+  @keyframes fadeIn {
+    from {opacity:0; transform:translateY(20px);}
+    to {opacity:1; transform:translateY(0);}
+  }
+  #chat-header {
+    background: rgba(0,0,0,0.3);
+    color: var(--accent);
+    padding: 10px;
+    font-weight: bold;
+    text-align: center;
+    font-size: 15px;
+    letter-spacing: 1px;
+    position: relative;
+  }
+  #minimize-chat {
+    position: absolute;
+    right: 10px;
+    top: 5px;
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-size: 18px;
+    cursor: pointer;
+  }
+  #chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .msg {
+    padding: 8px 10px;
+    border-radius: 10px;
+    max-width: 80%;
+    word-wrap: break-word;
+    animation: pop .3s ease;
+  }
+  @keyframes pop { from {opacity:0; transform:scale(0.9);} to {opacity:1; transform:scale(1);} }
+  .msg.user {
+    background: var(--accent);
+    color:#000;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+  }
+  .msg.other {
+    background:rgba(255,255,255,0.1);
+    color:#fff;
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+  }
+  #chat-input {
+    display: flex;
+    border-top: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.2);
+  }
+  #msgInput {
+    flex: 1; padding: 8px; border: none; outline: none;
+    background: transparent; color: #fff;
+  }
+  #sendBtn {
+    background: var(--accent);
+    border: none;
+    color: #000;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  @media (max-width:480px) {
+    #chat-container {
+      width: 90%;
+      left: 5%;
+      bottom: 200px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -57,14 +151,24 @@
   </div>
 </div>
 
-<audio id="audio" preload="metadata" src="https://stream.zeno.fm/l8ocj9i6ka2uv"></audio>
-<div id="ytContainer" style="display:none;">
-  <div id="ytFrame"></div>
+<!-- 💬 Mini Chat -->
+<div id="chat-container">
+  <div id="chat-header">
+    Chat da Rádio
+    <button id="minimize-chat">−</button>
+  </div>
+  <div id="chat-messages"></div>
+  <div id="chat-input">
+    <input id="msgInput" placeholder="Digite sua mensagem..." />
+    <button id="sendBtn">➤</button>
+  </div>
 </div>
+
+<audio id="audio" preload="metadata" src="https://stream.zeno.fm/l8ocj9i6ka2uv"></audio>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-import { getDatabase, ref as dbRef, onValue } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
+import { getDatabase, ref as dbRef, onValue, push } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAt4CeGjdbjzdtMH1qZHw6RuBFJ6SeTDKk",
@@ -80,57 +184,19 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const infoRef = dbRef(db, "coletivo_info");
 
+// 🎵 Rádio
 const bg = document.getElementById("bg");
 const playPauseBtn = document.getElementById("playPause");
 const equalizer = document.getElementById("equalizer");
 const audio = document.getElementById("audio");
-const ytContainer = document.getElementById("ytContainer");
 
-let youtubeAtivo = false;
-let ytPlayer = null;
-let videoAtual = "";
-let usuarioInteragiu = false;
-
-// 🔹 Libera som após primeiro clique
-document.body.addEventListener("click", () => {
-  usuarioInteragiu = true;
-  if (youtubeAtivo && ytPlayer) ytPlayer.unMute();
-}, { once:true });
-
-// 🔹 Atualização dinâmica via Firebase
 onValue(infoRef, (snap) => {
   const info = snap.val() || {};
   if (info.bg) bg.style.backgroundImage = `url('${info.bg}')`;
-
-  if (info.yt && info.yt.includes("youtube.com")) {
-    const id = info.yt.split("v=")[1]?.split("&")[0];
-    if (id && id !== videoAtual) {
-      videoAtual = id;
-      tocarYoutube(id);
-    }
-  } else {
-    voltarStreaming();
-  }
 });
 
-// 🔹 Botão play/pause
+// 🎧 Play/pause
 playPauseBtn.addEventListener("click", async () => {
-  if (youtubeAtivo && ytPlayer) {
-    const state = ytPlayer.getPlayerState();
-    if (state === YT.PlayerState.PLAYING) {
-      ytPlayer.pauseVideo();
-      playPauseBtn.innerHTML = "▶";
-      equalizer.classList.remove("playing");
-    } else {
-      ytPlayer.playVideo();
-      ytPlayer.unMute();
-      playPauseBtn.innerHTML = "❚❚";
-      equalizer.classList.add("playing");
-    }
-    return;
-  }
-
-  // Streaming padrão
   if (audio.paused) {
     await audio.play().catch(()=>{});
     playPauseBtn.innerHTML = "❚❚";
@@ -142,64 +208,42 @@ playPauseBtn.addEventListener("click", async () => {
   }
 });
 
-// 🔹 Carrega API do YouTube
-function loadYouTubeAPI(videoId) {
-  if (window.YT && window.YT.Player) {
-    criarPlayer(videoId);
-  } else {
-    const tag = document.createElement("script");
-    tag.src = "https://www.youtube.com/iframe_api";
-    document.body.appendChild(tag);
-    window.onYouTubeIframeAPIReady = () => criarPlayer(videoId);
+// 💬 Chat
+const chatRef = dbRef(db, "chat_mensagens");
+const chatMessages = document.getElementById("chat-messages");
+const msgInput = document.getElementById("msgInput");
+const sendBtn = document.getElementById("sendBtn");
+const nomeUser = "Ouvido" + Math.floor(Math.random()*1000);
+
+// enviar msg
+sendBtn.onclick = () => {
+  const msg = msgInput.value.trim();
+  if (msg) {
+    push(chatRef, { nome: nomeUser, texto: msg, ts: Date.now() });
+    msgInput.value = "";
   }
-}
+};
 
-// 🔹 Cria o player YouTube
-function criarPlayer(videoId) {
-  ytPlayer = new YT.Player("ytFrame", {
-    height: "0",
-    width: "0",
-    videoId,
-    playerVars: { autoplay: 1, controls: 0, mute: 1 },
-    events: {
-      onReady: () => {
-        ytPlayer.playVideo();
-        playPauseBtn.innerHTML = "❚❚";
-        equalizer.classList.add("playing");
-
-        // Som ligado se usuário já clicou antes
-        if (usuarioInteragiu) ytPlayer.unMute();
-      },
-      onStateChange: (e) => {
-        if (e.data === YT.PlayerState.ENDED) {
-          playPauseBtn.innerHTML = "▶";
-          equalizer.classList.remove("playing");
-        }
-      }
-    }
+// receber msgs
+onValue(chatRef, (snap) => {
+  chatMessages.innerHTML = "";
+  const data = snap.val() || {};
+  Object.values(data).forEach(m => {
+    const div = document.createElement("div");
+    div.className = "msg " + (m.nome === nomeUser ? "user" : "other");
+    div.textContent = `${m.nome === nomeUser ? "Você" : m.nome}: ${m.texto}`;
+    chatMessages.appendChild(div);
   });
-}
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+});
 
-// 🔹 Ativa modo YouTube
-function tocarYoutube(videoId) {
-  youtubeAtivo = true;
-  audio.pause();
-  ytContainer.style.display = "block";
-  if (ytPlayer) ytPlayer.destroy();
-  loadYouTubeAPI(videoId);
-}
-
-// 🔹 Volta ao streaming
-function voltarStreaming() {
-  if (!youtubeAtivo) return;
-  youtubeAtivo = false;
-  if (ytPlayer) ytPlayer.destroy();
-  ytContainer.style.display = "none";
-  audio.play().catch(()=>{});
-  playPauseBtn.innerHTML = "❚❚";
-  equalizer.classList.add("playing");
-}
+// msg de boas-vindas
+window.addEventListener("load", () => {
+  const welcome = document.createElement("div");
+  welcome.className = "msg other";
+  welcome.textContent = "🎶 Bem-vindo(a) à Rádio Online! Converse conosco ao vivo.";
+  chatMessages.appendChild(welcome);
+});
 </script>
-
 </body>
 </html>
