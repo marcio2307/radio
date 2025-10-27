@@ -32,6 +32,7 @@
     border-radius:16px;
     box-shadow:0 0 25px rgba(29,185,84,0.25);
     padding:24px;
+    margin-bottom:30px;
   }
 
   h2 {
@@ -96,6 +97,38 @@
     border-radius:6px;
     display:none;
   }
+
+  /* 💬 Chat Admin */
+  #chatBox {
+    background:#f9f9f9;
+    border:1px solid #ccc;
+    border-radius:10px;
+    padding:10px;
+    height:300px;
+    overflow-y:auto;
+    margin-top:15px;
+  }
+
+  .chat-msg {
+    padding:8px 10px;
+    background:#eaeaea;
+    border-radius:8px;
+    margin-bottom:6px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+
+  .chat-msg strong { color:#043a18; }
+
+  .deleteBtn {
+    background:transparent;
+    border:none;
+    color:#c00;
+    font-weight:bold;
+    cursor:pointer;
+  }
+
 </style>
 </head>
 <body>
@@ -123,21 +156,24 @@
   <label>Link do Vídeo do YouTube (somente áudio)</label>
   <input id="ytLink" type="text" placeholder="https://www.youtube.com/watch?v=..."/>
 
-  <!-- Botão para trocar para streaming -->
   <button id="streamBtn" class="stream">🎵 Usar Streaming da Rádio</button>
 
   <button id="saveBtn" class="primary">Salvar Configurações</button>
   <button id="logoutBtn" class="secondary">Sair</button>
 
   <div id="saveStatus" class="muted"></div>
+
+  <!-- 💬 Chat Monitor -->
+  <h2>💬 Chat ao vivo</h2>
+  <div id="chatBox"></div>
+  <button id="clearAll" class="secondary">🗑️ Apagar todas as mensagens</button>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
-  import { getDatabase, ref as dbRef, get, set } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
+  import { getDatabase, ref as dbRef, get, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
   import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-storage.js";
 
-  // 🔥 Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyAt4CeGjdbjzdtMH1qZHw6RuBFJ6SeTDKk",
     authDomain: "coletivo-f34d4.firebaseapp.com",
@@ -152,6 +188,7 @@
   const db = getDatabase(app);
   const storage = getStorage(app);
   const infoRef = dbRef(db, "coletivo_info");
+  const chatRef = dbRef(db, "chat_mensagens");
 
   // DOM
   const loginCard = document.getElementById("loginCard");
@@ -168,19 +205,16 @@
   const saveBtn = document.getElementById("saveBtn");
   const saveStatus = document.getElementById("saveStatus");
   const streamBtn = document.getElementById("streamBtn");
+  const chatBox = document.getElementById("chatBox");
+  const clearAll = document.getElementById("clearAll");
 
   // Login simples
   loginBtn.addEventListener("click", async () => {
     if (username.value === "admin" && password.value === "1234") {
       loginCard.style.display = "none";
       adminCard.style.display = "block";
-      const snap = await get(infoRef);
-      const info = snap.val() || {};
-      if (info.bg) {
-        bgPreview.src = info.bg;
-        bgPreview.style.display = "block";
-      }
-      if (info.yt) ytLink.value = info.yt;
+      carregarInfo();
+      carregarChat();
     } else {
       loginStatus.textContent = "Usuário ou senha incorretos.";
     }
@@ -191,6 +225,16 @@
     loginCard.style.display = "block";
     username.value = ""; password.value = "";
   });
+
+  async function carregarInfo() {
+    const snap = await get(infoRef);
+    const info = snap.val() || {};
+    if (info.bg) {
+      bgPreview.src = info.bg;
+      bgPreview.style.display = "block";
+    }
+    if (info.yt) ytLink.value = info.yt;
+  }
 
   // Preview imagem
   bgFile.addEventListener("change", e => {
@@ -205,7 +249,6 @@
     }
   });
 
-  // Upload genérico
   const uploadWithProgress = (file, path, progEl) => new Promise((resolve, reject) => {
     const ref = sRef(storage, path);
     const task = uploadBytesResumable(ref, file);
@@ -219,12 +262,10 @@
     });
   });
 
-  // 💾 Salvar configurações
   saveBtn.addEventListener("click", async () => {
     await salvarConfiguracoes(ytLink.value.trim());
   });
 
-  // 🔊 Botão de streaming
   streamBtn.addEventListener("click", async () => {
     const streamURL = "https://stream.zeno.fm/l8ocj9i6ka2uv.m3u";
     ytLink.value = streamURL;
@@ -232,7 +273,6 @@
     saveStatus.innerHTML = '<span class="ok">🎧 Streaming ativado com sucesso!</span>';
   });
 
-  // Função unificada de salvamento
   async function salvarConfiguracoes(linkFinal) {
     saveStatus.textContent = "Salvando...";
     saveBtn.disabled = true;
@@ -240,13 +280,10 @@
       const snap = await get(infoRef);
       const current = snap.val() || {};
       let finalBg = current.bg || "";
-
-      // Upload imagem
       if (bgFile.files?.[0]) {
         const ext = (bgFile.files[0].name.split(".").pop() || "jpg").toLowerCase();
         finalBg = await uploadWithProgress(bgFile.files[0], `radio/bg_${Date.now()}.${ext}`, bgProg);
       }
-
       const payload = { bg: finalBg, yt: linkFinal || "", playing: current.playing ?? true, position: current.position ?? 0 };
       await set(infoRef, payload);
       saveStatus.innerHTML = '<span class="ok">✅ Configurações salvas!</span>';
@@ -257,6 +294,36 @@
       saveBtn.disabled = false;
     }
   }
+
+  // 💬 Carregar Chat e permitir excluir
+  function carregarChat() {
+    onValue(chatRef, (snap) => {
+      chatBox.innerHTML = "";
+      const data = snap.val() || {};
+      Object.entries(data).forEach(([id, msg]) => {
+        const div = document.createElement("div");
+        div.className = "chat-msg";
+        div.innerHTML = `<div><strong>${msg.nome}</strong>: ${msg.texto}</div>
+                         <button class="deleteBtn" data-id="${id}">🗑️</button>`;
+        chatBox.appendChild(div);
+      });
+      // ações de exclusão
+      document.querySelectorAll(".deleteBtn").forEach(btn => {
+        btn.onclick = () => {
+          if (confirm("Excluir esta mensagem?")) {
+            remove(dbRef(db, "chat_mensagens/" + btn.dataset.id));
+          }
+        };
+      });
+    });
+  }
+
+  // Excluir tudo
+  clearAll.onclick = () => {
+    if (confirm("Tem certeza que deseja apagar TODAS as mensagens do chat?")) {
+      set(chatRef, {});
+    }
+  };
 </script>
 </body>
 </html>
