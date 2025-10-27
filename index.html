@@ -1,146 +1,92 @@
 <!doctype html>
 <html lang="pt-BR">
-<head>
+>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Rádio Online</title>
 <style>
-  :root { --spotify-green:#043a18; --accent:#0cdfb9; }
+  :root { --green:#043a18; --accent:#0cdfb9; --text:#fff; }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
     width:100%;height:100vh;overflow:hidden;
     font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-    color:#000;display:flex;align-items:center;justify-content:center;
-    background-color:#000;
+    color:var(--text);display:flex;align-items:center;justify-content:center;
+    background:#000;
   }
   .background{
-    position:fixed;inset:0;
-    background-size:cover;
-    background-position:center;
-    z-index:-1;
-    transition:opacity 0.8s ease-in-out;
+    position:fixed;inset:0;background-size:cover;background-position:center;
+    z-index:-1;transition:opacity .8s ease-in-out, background-image .3s ease;
   }
   .player-bar{
     position:fixed;bottom:0;left:0;width:100%;
     background:rgba(255,255,255,0.15);
     backdrop-filter:blur(10px) saturate(120%);
     display:flex;flex-direction:column;align-items:center;
-    padding:25px 0;gap:15px;
+    padding:22px 0;gap:14px;
   }
   .play-button{
     width:80px;height:80px;border-radius:50%;border:none;
-    background-color:var(--spotify-green);color:#fff;font-size:40px;cursor:pointer;
+    background:var(--green);color:#fff;font-size:40px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
     box-shadow:0 4px 25px rgba(4,58,24,0.4);
     transition:transform .2s ease,box-shadow .2s ease;
   }
   .play-button:hover{transform:scale(1.05);box-shadow:0 6px 28px rgba(4,58,24,0.6);}
-  .equalizer{display:flex;align-items:flex-end;justify-content:center;height:25px;gap:4px;}
-  .bar{width:4px;height:6px;background-color:var(--spotify-green);border-radius:2px;opacity:.8;transform-origin:bottom;}
+  .equalizer{display:flex;align-items:flex-end;justify-content:center;height:24px;gap:4px;}
+  .bar{width:4px;height:6px;background:var(--green);border-radius:2px;opacity:.9;transform-origin:bottom;}
   .playing .bar{animation:bounce 1s ease-in-out infinite;}
   .playing .bar:nth-child(2){animation-delay:.1s}
   .playing .bar:nth-child(3){animation-delay:.2s}
   .playing .bar:nth-child(4){animation-delay:.3s}
   @keyframes bounce{0%,100%{transform:scaleY(0.3)}50%{transform:scaleY(1.3)}}
 
-  /* 💬 Chat Menor */
-  #chat-container {
-    position: fixed;
-    bottom: 250px;
-    left: 40px;
-    width: 260px;
-    max-height: 320px;
-    display: flex;
-    flex-direction: column;
-    border-radius: 12px;
-    overflow: hidden;
-    backdrop-filter: blur(20px);
-    background: rgba(255,255,255,0.25);
-    border: 1px solid rgba(255,255,255,0.15);
-    box-shadow: 0 0 20px rgba(4,58,24,0.25);
-    z-index: 999;
-    animation: fadeIn .4s ease;
+  /* Chat compacto */
+  #chat-container{
+    position:fixed;left:40px;bottom:250px;width:260px;max-height:320px;
+    display:flex;flex-direction:column;border-radius:12px;overflow:hidden;
+    backdrop-filter:blur(20px);
+    background:rgba(255,255,255,0.22);
+    border:1px solid rgba(255,255,255,0.15);
+    box-shadow:0 0 20px rgba(4,58,24,0.25); z-index:999; animation:fadeIn .35s ease;
   }
-  @keyframes fadeIn {
-    from {opacity:0; transform:translateY(20px);}
-    to {opacity:1; transform:translateY(0);}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  #chat-header{
+    background:rgba(4,58,24,0.9);color:#fff;padding:8px;font-weight:700;
+    text-align:center;font-size:13px;letter-spacing:.5px;position:relative;
   }
-  #chat-header {
-    background: rgba(4,58,24,0.9);
-    color: #fff;
-    padding: 8px;
-    font-weight: bold;
-    text-align: center;
-    font-size: 13px;
-    letter-spacing: 1px;
-    position: relative;
+  #minChat{
+    position:absolute;right:8px;top:5px;background:transparent;border:none;
+    color:#fff;font-size:16px;cursor:pointer;opacity:.9;
   }
-  #chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+  #chat-messages{
+    flex:1;overflow-y:auto;padding:6px;display:flex;flex-direction:column;gap:5px;
   }
-  .msg {
-    padding: 6px 8px;
-    border-radius: 10px;
-    max-width: 80%;
-    word-wrap: break-word;
-    font-size: 13px;
-    animation: pop .3s ease;
-    backdrop-filter: blur(10px);
+  .msg{
+    padding:6px 8px;border-radius:10px;max-width:80%;word-wrap:break-word;
+    font-size:13px;animation:pop .2s ease;backdrop-filter:blur(6px);
   }
-  @keyframes pop { from {opacity:0; transform:scale(0.9);} to {opacity:1; transform:scale(1);} }
-
-  /* Mensagem do usuário (verde escuro translúcido e texto branco) */
-  .msg.user {
-    background: rgba(4,58,24,0.9);
-    color: #fff;
-    align-self: flex-end;
-    border-bottom-right-radius: 2px;
+  @keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+  .msg.user{
+    background:rgba(4,58,24,0.9);color:#fff;align-self:flex-end;border-bottom-right-radius:2px;
   }
-
-  .msg.other {
-    background: rgba(255,255,255,0.6);
-    color:#000;
-    align-self: flex-start;
-    border-bottom-left-radius: 2px;
+  .msg.other{
+    background:rgba(255,255,255,0.6);color:#000;align-self:flex-start;border-bottom-left-radius:2px;
   }
-
-  #chat-input {
-    display: flex;
-    border-top: 1px solid rgba(255,255,255,0.3);
-    background: rgba(255,255,255,0.2);
-    backdrop-filter: blur(8px);
+  #chat-input{
+    display:flex;border-top:1px solid rgba(255,255,255,0.3);
+    background:rgba(255,255,255,0.18);backdrop-filter:blur(8px);
   }
-  #msgInput {
-    flex: 1; padding: 6px; border: none; outline: none;
-    background: transparent; color: #000; font-size: 13px;
+  #msgInput{flex:1;padding:6px;border:none;outline:none;background:transparent;color:#000;font-size:13px;}
+  #sendBtn{
+    background:var(--green);border:none;color:#fff;padding:6px 10px;cursor:pointer;
+    font-weight:700;border-radius:0 0 10px 0;transition:background .2s;
   }
-
-  /* Botão enviar verde escuro */
-  #sendBtn {
-    background: var(--spotify-green);
-    border: none;
-    color: #fff;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-weight: bold;
-    border-radius: 0 0 10px 0;
-    transition: background .2s;
-  }
-  #sendBtn:hover {
-    background: #065a27;
-  }
-
-  @media (max-width:480px) {
-    #chat-container {
-      width: 85%;
-      left: 7%;
-      bottom: 200px;
-    }
+  #sendBtn:hover{background:#065a27;}
+  #chat-tab{
+    position:fixed;left:40px;bottom:250px;
+    background:rgba(4,58,24,0.9);color:#fff;border:1px solid rgba(255,255,255,0.2);
+    padding:8px 12px;border-radius:10px;cursor:pointer;display:none;z-index:998;
+    font-weight:700;font-size:12px;letter-spacing:.5px;
   }
 </style>
 </head>
@@ -150,22 +96,25 @@
 
 <div class="player-bar">
   <button id="playPause" class="play-button">▶</button>
-  <div class="equalizer" id="equalizer">
+  <div id="equalizer" class="equalizer">
     <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
   </div>
 </div>
 
-<!-- 💬 Chat -->
 <div id="chat-container">
-  <div id="chat-header">Chat da Rádio</div>
+  <div id="chat-header">Chat da Rádio <button id="minChat" title="Minimizar">−</button></div>
   <div id="chat-messages"></div>
   <div id="chat-input">
     <input id="msgInput" placeholder="Digite..." />
     <button id="sendBtn">➤</button>
   </div>
 </div>
+<div id="chat-tab">Chat</div>
 
-<audio id="audio" preload="metadata" src="https://stream.zeno.fm/l8ocj9i6ka2uv"></audio>
+<audio id="audio" preload="metadata"></audio>
+<div id="ytContainer" style="position:fixed;left:-9999px;top:-9999px;width:0;height:0;overflow:hidden;">
+  <div id="ytFrame"></div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
@@ -180,65 +129,122 @@ const firebaseConfig = {
   messagingSenderId: "296376447787",
   appId: "1:296376447787:web:1341c59c8087d6ac1e4b6e"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const infoRef = dbRef(db, "coletivo_info");
+const chatRef = dbRef(db, "chat_mensagens");
 
+const STREAM_FALLBACK = "https://stream.zeno.fm/l8ocj9i6ka2uv"; // 🎧 seu streaming fixo
+
+// Referências DOM
 const bg = document.getElementById("bg");
 const playPauseBtn = document.getElementById("playPause");
 const equalizer = document.getElementById("equalizer");
 const audio = document.getElementById("audio");
+const ytContainer = document.getElementById("ytContainer");
+const chatContainer = document.getElementById("chat-container");
+const chatTab = document.getElementById("chat-tab");
+const chatMessages = document.getElementById("chat-messages");
+const msgInput = document.getElementById("msgInput");
+const sendBtn = document.getElementById("sendBtn");
+const minChat = document.getElementById("minChat");
+
+let youtubeAtivo = false;
+let ytPlayer = null;
+let videoAtual = "";
+let usuarioInteragiu = false;
+let fonteAtual = "";
+
+document.body.addEventListener("click", () => {
+  usuarioInteragiu = true;
+  if (youtubeAtivo && ytPlayer) ytPlayer.unMute?.();
+  if (!youtubeAtivo && audio.src) audio.play().catch(()=>{});
+}, { once:true });
 
 onValue(infoRef, (snap) => {
   const info = snap.val() || {};
   if (info.bg) bg.style.backgroundImage = `url('${info.bg}')`;
+  const linkPainel = (info.yt || "").trim();
+  selecionarFonte(linkPainel || STREAM_FALLBACK);
 });
+
+function selecionarFonte(link){
+  if (/youtube\.com|youtu\.be/i.test(link)) {
+    const id = link.split("v=")[1]?.split("&")[0] || link.split("/").pop();
+    if (id) trocarParaYouTube(id); else trocarParaStreaming(STREAM_FALLBACK);
+  } else {
+    trocarParaStreaming(link);
+  }
+}
 
 playPauseBtn.addEventListener("click", async () => {
-  if (audio.paused) {
-    await audio.play().catch(()=>{});
-    playPauseBtn.innerHTML = "❚❚";
-    equalizer.classList.add("playing");
+  if (youtubeAtivo && ytPlayer) {
+    const s = ytPlayer.getPlayerState?.();
+    if (s === 1) { ytPlayer.pauseVideo(); uiPaused(); }
+    else { ytPlayer.playVideo(); if (usuarioInteragiu) ytPlayer.unMute(); uiPlaying(); }
   } else {
-    audio.pause();
-    playPauseBtn.innerHTML = "▶";
-    equalizer.classList.remove("playing");
+    if (audio.paused) { await audio.play().catch(()=>{}); uiPlaying(); }
+    else { audio.pause(); uiPaused(); }
   }
 });
+function uiPlaying(){ playPauseBtn.textContent = "❚❚"; equalizer.classList.add("playing"); }
+function uiPaused(){ playPauseBtn.textContent = "▶"; equalizer.classList.remove("playing"); }
 
-const chatRef = dbRef(db, "chat_mensagens");
-const chatMessages = document.getElementById("chat-messages");
-const msgInput = document.getElementById("msgInput");
-const sendBtn = document.getElementById("sendBtn");
-const nomeUser = "Ouvido" + Math.floor(Math.random()*1000);
-
-sendBtn.onclick = () => {
-  const msg = msgInput.value.trim();
-  if (msg) {
-    push(chatRef, { nome: nomeUser, texto: msg, ts: Date.now() });
-    msgInput.value = "";
-  }
-};
-
-onValue(chatRef, (snap) => {
-  chatMessages.innerHTML = "";
-  const data = snap.val() || {};
-  Object.values(data).forEach(m => {
-    const div = document.createElement("div");
-    div.className = "msg " + (m.nome === nomeUser ? "user" : "other");
-    div.textContent = `${m.nome === nomeUser ? "Você" : m.nome}: ${m.texto}`;
-    chatMessages.appendChild(div);
+function loadYouTubeAPI(cb){
+  if (window.YT && window.YT.Player){ cb(); return; }
+  const s=document.createElement("script"); s.src="https://www.youtube.com/iframe_api";
+  document.body.appendChild(s);
+  window.onYouTubeIframeAPIReady=()=>cb();
+}
+function criarPlayer(id){
+  ytPlayer=new YT.Player("ytFrame",{
+    height:"0",width:"0",videoId:id,playerVars:{autoplay:1,controls:0,mute:1},
+    events:{
+      onReady:()=>{ ytPlayer.playVideo(); uiPlaying(); if(usuarioInteragiu) ytPlayer.unMute(); },
+      onError:()=>trocarParaStreaming(STREAM_FALLBACK)
+    }
   });
-  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+function trocarParaYouTube(id){
+  youtubeAtivo=true;fonteAtual="youtube";videoAtual=id;
+  audio.pause();audio.src="";if(ytPlayer)ytPlayer.destroy();
+  ytContainer.style.display="block";
+  loadYouTubeAPI(()=>criarPlayer(id));
+}
+function trocarParaStreaming(src){
+  youtubeAtivo=false;fonteAtual="stream";
+  if(ytPlayer){ytPlayer.destroy();ytPlayer=null;}
+  ytContainer.style.display="none";
+  audio.src=src; audio.play().then(uiPlaying).catch(()=>uiPaused());
+}
+
+audio.addEventListener("error",()=>setTimeout(()=>audio.play().catch(()=>{}),1000));
+audio.addEventListener("ended",()=>{ if(fonteAtual==="stream") setTimeout(()=>audio.play().catch(()=>{}),300); });
+
+const nomeUser="Ouvido"+Math.floor(Math.random()*1000);
+sendBtn.onclick=()=>{
+  const msg=msgInput.value.trim();
+  if(msg){ push(chatRef,{nome:nomeUser,texto:msg,ts:Date.now()}); msgInput.value=""; }
+};
+onValue(chatRef,(snap)=>{
+  chatMessages.innerHTML="";
+  const data=snap.val()||{};
+  Object.values(data).forEach(m=>{
+    const d=document.createElement("div");
+    d.className="msg "+(m.nome===nomeUser?"user":"other");
+    d.textContent=`${m.nome===nomeUser?"Você":m.nome}: ${m.texto}`;
+    chatMessages.appendChild(d);
+  });
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+});
+window.addEventListener("load",()=>{
+  const w=document.createElement("div");
+  w.className="msg other"; w.textContent="🎶 Bem-vindo(a) à Rádio Online!";
+  chatMessages.appendChild(w);
 });
 
-window.addEventListener("load", () => {
-  const welcome = document.createElement("div");
-  welcome.className = "msg other";
-  welcome.textContent = "🎶 Bem-vindo(a) à Rádio Online!";
-  chatMessages.appendChild(welcome);
-});
+minChat.onclick=()=>{chatContainer.style.display="none";chatTab.style.display="inline-block";};
+chatTab.onclick=()=>{chatContainer.style.display="flex";chatTab.style.display="none";};
 </script>
 </body>
 </html>
