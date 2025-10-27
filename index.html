@@ -1,16 +1,16 @@
--<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Rádio Online</title>
 <style>
-  :root { --spotify-green:#043a18; --text:#ffffff; --accent:#0cdfb9; }
+  :root { --spotify-green:#043a18; --accent:#0cdfb9; }
   *{box-sizing:border-box;margin:0;padding:0}
   body{
     width:100%;height:100vh;overflow:hidden;
     font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-    color:var(--text);display:flex;align-items:center;justify-content:center;
+    color:#000;display:flex;align-items:center;justify-content:center;
     background-color:#000;
   }
   .background{
@@ -43,21 +43,21 @@
   .playing .bar:nth-child(4){animation-delay:.3s}
   @keyframes bounce{0%,100%{transform:scaleY(0.3)}50%{transform:scaleY(1.3)}}
 
-  /* 💬 Mini Chat */
+  /* 💬 Chat Menor */
   #chat-container {
     position: fixed;
-    bottom: 230px; /* 🔹 mais acima, longe do player */
+    bottom: 250px;
     left: 40px;
-    width: 320px;
-    max-height: 420px;
-    display: flex; /* 🔹 já aberto */
+    width: 260px; /* 🔹 menor */
+    max-height: 320px; /* 🔹 mais compacto */
+    display: flex;
     flex-direction: column;
-    border-radius: 15px;
+    border-radius: 12px;
     overflow: hidden;
-    backdrop-filter: blur(12px);
-    background: rgba(4,58,24,0.96);
+    backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.25);
     border: 1px solid rgba(255,255,255,0.15);
-    box-shadow: 0 0 20px rgba(4,58,24,0.7);
+    box-shadow: 0 0 20px rgba(4,58,24,0.25);
     z-index: 999;
     animation: fadeIn .4s ease;
   }
@@ -66,75 +66,69 @@
     to {opacity:1; transform:translateY(0);}
   }
   #chat-header {
-    background: rgba(0,0,0,0.3);
-    color: var(--accent);
-    padding: 10px;
+    background: rgba(4,58,24,0.9);
+    color: #fff;
+    padding: 8px;
     font-weight: bold;
     text-align: center;
-    font-size: 15px;
+    font-size: 13px;
     letter-spacing: 1px;
     position: relative;
-  }
-  #minimize-chat {
-    position: absolute;
-    right: 10px;
-    top: 5px;
-    background: transparent;
-    border: none;
-    color: var(--accent);
-    font-size: 18px;
-    cursor: pointer;
   }
   #chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 10px;
+    padding: 6px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
   }
   .msg {
-    padding: 8px 10px;
+    padding: 6px 8px;
     border-radius: 10px;
     max-width: 80%;
     word-wrap: break-word;
+    font-size: 13px;
     animation: pop .3s ease;
+    backdrop-filter: blur(10px);
   }
   @keyframes pop { from {opacity:0; transform:scale(0.9);} to {opacity:1; transform:scale(1);} }
   .msg.user {
-    background: var(--accent);
+    background: rgba(12,223,185,0.8);
     color:#000;
     align-self: flex-end;
     border-bottom-right-radius: 2px;
   }
   .msg.other {
-    background:rgba(255,255,255,0.1);
-    color:#fff;
+    background:rgba(255,255,255,0.6);
+    color:#000;
     align-self: flex-start;
     border-bottom-left-radius: 2px;
   }
   #chat-input {
     display: flex;
-    border-top: 1px solid rgba(255,255,255,0.2);
-    background: rgba(0,0,0,0.2);
+    border-top: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(8px);
   }
   #msgInput {
-    flex: 1; padding: 8px; border: none; outline: none;
-    background: transparent; color: #fff;
+    flex: 1; padding: 6px; border: none; outline: none;
+    background: transparent; color: #000; font-size: 13px;
   }
   #sendBtn {
     background: var(--accent);
     border: none;
     color: #000;
-    padding: 8px 12px;
+    padding: 6px 10px;
     cursor: pointer;
     font-weight: bold;
+    border-radius: 0 0 10px 0;
   }
 
   @media (max-width:480px) {
     #chat-container {
-      width: 90%;
-      left: 5%;
+      width: 85%;
+      left: 7%;
       bottom: 200px;
     }
   }
@@ -151,15 +145,12 @@
   </div>
 </div>
 
-<!-- 💬 Mini Chat -->
+<!-- 💬 Chat menor -->
 <div id="chat-container">
-  <div id="chat-header">
-    Chat da Rádio
-    <button id="minimize-chat">−</button>
-  </div>
+  <div id="chat-header">Chat da Rádio</div>
   <div id="chat-messages"></div>
   <div id="chat-input">
-    <input id="msgInput" placeholder="Digite sua mensagem..." />
+    <input id="msgInput" placeholder="Digite..." />
     <button id="sendBtn">➤</button>
   </div>
 </div>
@@ -184,7 +175,6 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const infoRef = dbRef(db, "coletivo_info");
 
-// 🎵 Rádio
 const bg = document.getElementById("bg");
 const playPauseBtn = document.getElementById("playPause");
 const equalizer = document.getElementById("equalizer");
@@ -195,7 +185,6 @@ onValue(infoRef, (snap) => {
   if (info.bg) bg.style.backgroundImage = `url('${info.bg}')`;
 });
 
-// 🎧 Play/pause
 playPauseBtn.addEventListener("click", async () => {
   if (audio.paused) {
     await audio.play().catch(()=>{});
@@ -208,14 +197,12 @@ playPauseBtn.addEventListener("click", async () => {
   }
 });
 
-// 💬 Chat
 const chatRef = dbRef(db, "chat_mensagens");
 const chatMessages = document.getElementById("chat-messages");
 const msgInput = document.getElementById("msgInput");
 const sendBtn = document.getElementById("sendBtn");
 const nomeUser = "Ouvido" + Math.floor(Math.random()*1000);
 
-// enviar msg
 sendBtn.onclick = () => {
   const msg = msgInput.value.trim();
   if (msg) {
@@ -224,7 +211,6 @@ sendBtn.onclick = () => {
   }
 };
 
-// receber msgs
 onValue(chatRef, (snap) => {
   chatMessages.innerHTML = "";
   const data = snap.val() || {};
@@ -237,11 +223,10 @@ onValue(chatRef, (snap) => {
   chatMessages.scrollTop = chatMessages.scrollHeight;
 });
 
-// msg de boas-vindas
 window.addEventListener("load", () => {
   const welcome = document.createElement("div");
   welcome.className = "msg other";
-  welcome.textContent = "🎶 Bem-vindo(a) à Rádio Online! Converse conosco ao vivo.";
+  welcome.textContent = "🎶 Bem-vindo(a) à Rádio Online!";
   chatMessages.appendChild(welcome);
 });
 </script>
