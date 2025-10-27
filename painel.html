@@ -266,8 +266,9 @@
     await salvarConfiguracoes(ytLink.value.trim());
   });
 
+  // Botão para ativar o streaming fixo
   streamBtn.addEventListener("click", async () => {
-    const streamURL = "https://stream.zeno.fm/l8ocj9i6ka2uv.m3u";
+    const streamURL = "https://stream.zeno.fm/l8ocj9i6ka2uv"; // 🎧 streaming fixo
     ytLink.value = streamURL;
     await salvarConfiguracoes(streamURL);
     saveStatus.innerHTML = '<span class="ok">🎧 Streaming ativado com sucesso!</span>';
@@ -307,7 +308,6 @@
                          <button class="deleteBtn" data-id="${id}">🗑️</button>`;
         chatBox.appendChild(div);
       });
-      // ações de exclusão
       document.querySelectorAll(".deleteBtn").forEach(btn => {
         btn.onclick = () => {
           if (confirm("Excluir esta mensagem?")) {
@@ -318,7 +318,6 @@
     });
   }
 
-  // Excluir tudo
   clearAll.onclick = () => {
     if (confirm("Tem certeza que deseja apagar TODAS as mensagens do chat?")) {
       set(chatRef, {});
